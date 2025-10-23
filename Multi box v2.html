@@ -1,0 +1,903 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Multi Box v2 — All-in-One Toolbox (Pro)</title>
+
+  <!-- Lucide icons -->
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.278.0/dist/umd/lucide.min.js"></script>
+  <!-- CropperJS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+  <!-- QRCode (davidshimjs/qrcodejs) -->
+  <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>
+  <!-- FFmpeg WASM -->
+  <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.6/dist/ffmpeg.min.js"></script>
+
+  <style>
+    :root{
+      --bg1:#0f1724;
+      --bg2:#141827;
+      --card:#12121a;
+      --muted:#9aa0b4;
+      --accent1:#ffd54a;
+      --accent2:#ff6bcb;
+      --glass: rgba(255,255,255,0.03);
+      --glass-2: rgba(255,255,255,0.02);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: linear-gradient(180deg, var(--bg1), var(--bg2));
+      color:#e6eef8;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      padding:18px;
+      display:flex;
+      justify-content:center;
+      align-items:flex-start;
+      gap:18px;
+    }
+
+    /* Shell */
+    .app{
+      width:100%;
+      max-width:1000px;
+      border-radius:14px;
+      padding:18px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      box-shadow: 0 8px 40px rgba(2,6,23,0.7);
+      overflow:hidden;
+      border: 1px solid rgba(255,255,255,0.03);
+    }
+    header.app-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      margin-bottom:14px;
+    }
+    .brand{
+      display:flex;
+      gap:12px;
+      align-items:center;
+    }
+    .logo{
+      width:56px; height:56px;
+      border-radius:10px;
+      background: linear-gradient(135deg, var(--accent1), var(--accent2));
+      display:flex; align-items:center; justify-content:center;
+      color:#081023; font-weight:800;
+      box-shadow: 0 8px 30px rgba(255,107,203,0.08), inset 0 -6px 20px rgba(0,0,0,0.15);
+    }
+    h1{font-size:1.25rem; margin:0}
+    p.subtitle{margin:0; color:var(--muted); font-size:0.9rem}
+
+    /* Nav / Tools grid */
+    .main-grid{
+      display:grid;
+      grid-template-columns: 1fr 340px;
+      gap:18px;
+    }
+    @media (max-width:980px){ .main-grid{ grid-template-columns:1fr; } }
+
+    /* Left column: tools */
+    .tools{
+      display:grid;
+      gap:12px;
+    }
+
+    /* Tool card */
+    .tool-card{
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      padding:12px;
+      border-radius:12px;
+      display:flex;
+      gap:12px;
+      align-items:flex-start;
+      border:1px solid rgba(255,255,255,0.03);
+      transition: transform .18s ease, box-shadow .18s ease;
+    }
+    .tool-card:hover{ transform: translateY(-6px); box-shadow: 0 18px 40px rgba(2,6,23,0.6); }
+
+    .tool-icon{
+      width:64px; min-width:64px; height:64px; border-radius:10px;
+      background: linear-gradient(135deg, rgba(255,215,0,0.12), rgba(255,107,203,0.06));
+      display:flex; align-items:center; justify-content:center; font-size:24px; color:var(--accent1);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+    }
+    .tool-body{ flex:1 }
+    .tool-title{ margin:0; font-weight:700; color:var(--accent1); font-size:1.02rem }
+    .tool-desc{ margin:6px 0 8px 0; color:var(--muted); font-size:0.92rem }
+
+    .tool-actions{ display:flex; gap:8px; flex-wrap:wrap }
+    .btn{
+      background:linear-gradient(90deg, var(--accent1), var(--accent2));
+      color:#081023; border:none; padding:8px 12px; border-radius:10px; cursor:pointer; font-weight:700;
+      box-shadow: 0 8px 22px rgba(255,107,203,0.06); display:inline-flex; gap:8px; align-items:center;
+    }
+    .btn.secondary{ background:transparent; color:var(--muted); border:1px solid rgba(255,255,255,0.04); font-weight:600; }
+    .btn.icon{ padding:8px; width:40px; height:40px; justify-content:center; }
+
+    /* Right column: preview */
+    aside.panel{
+      position:relative;
+      border-radius:12px;
+      padding:12px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02));
+      border:1px solid rgba(255,255,255,0.03);
+      height:100%;
+      min-height:320px;
+    }
+    .panel h4{ margin:6px 0 8px 0; color:var(--accent1) }
+    .preview-area{ background:var(--glass); padding:12px; border-radius:10px; min-height:140px; display:flex; flex-direction:column; gap:8px; align-items:center; justify-content:center; overflow:auto }
+    .preview-area img, .preview-area video{ max-width:100%; border-radius:8px; display:block }
+    .preview-controls{ display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+
+    /* Input styles */
+    .field { width:100% }
+    input[type=file], select, input[type=range], input[type=number], input[type=text], textarea {
+      width:100%; padding:10px; border-radius:8px; background:var(--glass-2); border:1px solid rgba(255,255,255,0.03); color:inherit;
+    }
+    label { font-size:0.9rem; color:var(--muted); display:block; margin-bottom:6px; }
+
+    /* Small helpers */
+    .muted{ color:var(--muted); font-size:0.9rem }
+    .tiny{ font-size:0.82rem; color:var(--muted) }
+    .download-link{ text-decoration:none; display:inline-block; margin-top:6px; padding:8px 10px; border-radius:8px; background:linear-gradient(90deg,var(--accent1),var(--accent2)); color:#081023; font-weight:700; }
+
+    /* Tool grid within left column for compact buttons (like Canva) */
+    .tool-grid{ display:grid; grid-template-columns: repeat(2, 1fr); gap:12px; margin-top:8px; }
+    @media (max-width:540px){ .tool-grid{ grid-template-columns:1fr } }
+
+    /* subtle loader */
+    .loader { display:inline-block; animation: spin 1s linear infinite; transform-origin:center; }
+    @keyframes spin{ from{transform:rotate(0)} to{transform:rotate(360deg)} }
+
+    /* small footer */
+    footer { margin-top:12px; text-align:center; color:var(--muted); font-size:0.9rem }
+  </style>
+</head>
+<body>
+  <div class="app" role="application">
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo">MB</div>
+        <div>
+          <h1>Multi Box v2</h1>
+          <p class="subtitle">All-in-One Media Toolbox — client-side. Canva-style UI</p>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <button class="btn secondary" id="themeToggle" title="Toggle theme (placeholder)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.7 11.3A5 5 0 1 1 6.7 5.3"></path></svg>
+          Theme
+        </button>
+        <button class="btn icon" id="helpBtn" title="Quick help">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"></path></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="main-grid">
+
+      <!-- LEFT: Tools -->
+      <div class="tools">
+
+        <!-- Row: Top action / tool tiles (Canva-like) -->
+        <div class="tool-card" id="tile-tools">
+          <div class="tool-icon" aria-hidden>
+            <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
+          </div>
+          <div class="tool-body">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+              <div>
+                <div class="tool-title">All Tools</div>
+                <div class="tool-desc">Quick access to all utilities — tap a tool to open it below.</div>
+              </div>
+              <div class="tool-actions">
+                <button class="btn" onclick="showTool('img-convert')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="14" rx="2"/></svg> Open</button>
+              </div>
+            </div>
+
+            <div class="tool-grid" style="margin-top:12px;">
+              <!-- Image Convert -->
+              <div style="background:var(--glass); padding:8px; border-radius:10px;">
+                <div style="display:flex; gap:8px; align-items:center;">
+                  <div style="width:44px; height:44px; border-radius:8px; background:linear-gradient(135deg,var(--accent1),var(--accent2)); display:flex; align-items:center; justify-content:center; color:#081023;">🖼️</div>
+                  <div style="flex:1">
+                    <div style="font-weight:700; color:var(--accent1)">Image Convert</div>
+                    <div class="tiny">PNG/JPG/WEBP</div>
+                  </div>
+                </div>
+                <div style="margin-top:8px; display:flex; gap:8px;">
+                  <button class="btn secondary" onclick="showTool('img-convert')">Open</button>
+                  <button class="btn" onclick="document.getElementById('convertInput').click()">Upload</button>
+                </div>
+              </div>
+
+              <!-- Image Crop -->
+              <div style="background:var(--glass); padding:8px; border-radius:10px;">
+                <div style="display:flex; gap:8px; align-items:center;">
+                  <div style="width:44px; height:44px; border-radius:8px; background:linear-gradient(135deg, rgba(255,215,0,0.12), rgba(255,107,203,0.06)); display:flex; align-items:center; justify-content:center; color:var(--accent1)">✂️</div>
+                  <div style="flex:1">
+                    <div style="font-weight:700; color:var(--accent1)">Image Crop</div>
+                    <div class="tiny">Presets & drag</div>
+                  </div>
+                </div>
+                <div style="margin-top:8px; display:flex; gap:8px;">
+                  <button class="btn secondary" onclick="showTool('img-crop')">Open</button>
+                  <button class="btn" onclick="document.getElementById('cropInput').click()">Upload</button>
+                </div>
+              </div>
+
+              <!-- Image Compress -->
+              <div style="background:var(--glass); padding:8px; border-radius:10px;">
+                <div style="display:flex; gap:8px; align-items:center;">
+                  <div style="width:44px; height:44px; border-radius:8px; background:linear-gradient(135deg, rgba(255,215,0,0.06), rgba(255,107,203,0.12)); display:flex; align-items:center; justify-content:center; color:var(--accent1)">🗜️</div>
+                  <div style="flex:1">
+                    <div style="font-weight:700; color:var(--accent1)">Compress</div>
+                    <div class="tiny">Resize & quality</div>
+                  </div>
+                </div>
+                <div style="margin-top:8px; display:flex; gap:8px;">
+                  <button class="btn secondary" onclick="showTool('img-compress')">Open</button>
+                  <button class="btn" onclick="document.getElementById('compressInput').click()">Upload</button>
+                </div>
+              </div>
+
+              <!-- Background Remove -->
+              <div style="background:var(--glass); padding:8px; border-radius:10px;">
+                <div style="display:flex; gap:8px; align-items:center;">
+                  <div style="width:44px; height:44px; border-radius:8px; background:linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,107,203,0.08)); display:flex; align-items:center; justify-content:center; color:var(--accent1)">🧹</div>
+                  <div style="flex:1">
+                    <div style="font-weight:700; color:var(--accent1)">BG Remove</div>
+                    <div class="tiny">Sample & remove</div>
+                  </div>
+                </div>
+                <div style="margin-top:8px; display:flex; gap:8px;">
+                  <button class="btn secondary" onclick="showTool('bg-remove')">Open</button>
+                  <button class="btn" onclick="document.getElementById('bgInput').click()">Upload</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Image Convert Card -->
+        <div class="tool-card" id="img-convert" style="display:none">
+          <div class="tool-icon" aria-hidden><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="14" rx="2"/></svg></div>
+          <div class="tool-body">
+            <div style="display:flex; justify-content:space-between; gap:12px; align-items:center;">
+              <div>
+                <div class="tool-title">Image Converter</div>
+                <div class="tool-desc">Convert PNG/JPG/WEBP — choose quality</div>
+              </div>
+              <div style="text-align:right">
+                <div class="tiny">Output format</div>
+                <select id="convertFormat" class="field" style="width:140px">
+                  <option value="png">PNG</option>
+                  <option value="jpeg">JPG</option>
+                  <option value="webp">WEBP</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="margin-top:10px; display:grid; grid-template-columns: 1fr 160px; gap:12px;">
+              <div>
+                <label>Choose image</label>
+                <input id="convertInput" type="file" accept="image/*" />
+                <label style="margin-top:8px">Quality (for JPG/WEBP)</label>
+                <input id="convertQuality" type="range" min="0.1" max="1" step="0.05" value="0.92" />
+                <div class="tool-actions" style="margin-top:8px;">
+                  <button class="btn" id="convertBtn"><span data-feather="refresh-cw"></span> Convert</button>
+                  <button class="btn secondary" id="convertReset">Reset</button>
+                </div>
+                <div id="convertStatus" class="muted tiny" style="margin-top:8px"></div>
+              </div>
+              <div>
+                <label>Preview</label>
+                <div id="convertPreview" class="preview-area tiny">No image yet</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Image Crop Card -->
+        <div class="tool-card" id="img-crop" style="display:none">
+          <div class="tool-icon" aria-hidden><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 2v6a2 2 0 0 0 2 2h6"/></svg></div>
+          <div class="tool-body">
+            <div style="display:flex; justify-content:space-between; gap:12px; align-items:center;">
+              <div>
+                <div class="tool-title">Image Crop</div>
+                <div class="tool-desc">Crop with presets (Cropper.js)</div>
+              </div>
+              <div style="text-align:right">
+                <div class="tiny">Actions</div>
+                <div style="display:flex; gap:6px; justify-content:flex-end">
+                  <button class="btn secondary" onclick="setCropRatio(4/3)">4:3</button>
+                  <button class="btn secondary" onclick="setCropRatio(16/9)">16:9</button>
+                  <button class="btn secondary" onclick="setCropRatio(1)">1:1</button>
+                  <button class="btn secondary" onclick="setCropRatio(NaN)">Free</button>
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-top:10px;">
+              <label>Choose image</label>
+              <input id="cropInput" type="file" accept="image/*" />
+              <div style="margin-top:10px; display:flex; gap:12px;">
+                <div style="flex:1;">
+                  <div style="background:var(--glass); padding:8px; border-radius:8px; min-height:220px; display:flex; align-items:center; justify-content:center;">
+                    <img id="cropImage" alt="" style="max-width:100%; display:block;"/>
+                  </div>
+                </div>
+                <div style="width:220px">
+                  <label>Preview</label>
+                  <div id="cropPreviewBox" class="preview-area tiny" style="min-height:160px">No preview</div>
+                  <div style="margin-top:8px" class="tool-actions">
+                    <button class="btn" id="cropDo">Crop & Download</button>
+                    <button class="btn secondary" id="cropReset">Reset</button>
+                  </div>
+                  <div id="cropStatus" class="muted tiny" style="margin-top:8px"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Image Compress Card -->
+        <div class="tool-card" id="img-compress" style="display:none">
+          <div class="tool-icon" aria-hidden><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 12H3"/></svg></div>
+          <div class="tool-body">
+            <div style="display:flex; justify-content:space-between; gap:12px;">
+              <div>
+                <div class="tool-title">Image Compressor</div>
+                <div class="tool-desc">Resize & reduce quality</div>
+              </div>
+            </div>
+
+            <div style="margin-top:10px; display:grid; grid-template-columns:1fr 160px; gap:12px;">
+              <div>
+                <label>Choose image</label>
+                <input id="compressInput" type="file" accept="image/*" />
+                <label style="margin-top:8px">Max width (px)</label>
+                <input id="compressMaxWidth" type="number" min="16" max="8000" value="1280" />
+                <label style="margin-top:8px">Quality</label>
+                <input id="compressQuality" type="range" min="0.1" max="1" step="0.05" value="0.8" />
+                <div style="margin-top:8px;" class="tool-actions">
+                  <button class="btn" id="compressBtn">Compress</button>
+                  <button class="btn secondary" id="compressReset">Reset</button>
+                </div>
+                <div id="compressStatus" class="muted tiny" style="margin-top:8px"></div>
+              </div>
+              <div>
+                <label>Preview</label>
+                <div id="compressPreview" class="preview-area tiny">No result yet</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Background Remove Card -->
+        <div class="tool-card" id="bg-remove" style="display:none">
+          <div class="tool-icon" aria-hidden><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 3h6v6H3z"/></svg></div>
+          <div class="tool-body">
+            <div style="display:flex; justify-content:space-between; gap:12px;">
+              <div>
+                <div class="tool-title">Background Remove</div>
+                <div class="tool-desc">Sample corners — set tolerance</div>
+              </div>
+            </div>
+
+            <div style="margin-top:10px; display:grid; grid-template-columns:1fr 160px; gap:12px;">
+              <div>
+                <label>Choose image</label>
+                <input id="bgInput" type="file" accept="image/*" />
+                <label style="margin-top:8px">Tolerance (0-255)</label>
+                <input id="bgTolerance" type="range" min="1" max="255" value="60" />
+                <div style="margin-top:8px;" class="tool-actions">
+                  <button class="btn" id="bgBtn">Remove Background</button>
+                  <button class="btn secondary" id="bgReset">Reset</button>
+                </div>
+                <div id="bgStatus" class="muted tiny" style="margin-top:8px"></div>
+              </div>
+              <div>
+                <label>Preview</label>
+                <div id="bgPreview" class="preview-area tiny">No result yet</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Video Convert Card -->
+        <div class="tool-card" id="video-convert" style="display:none">
+          <div class="tool-icon" aria-hidden><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7h11v10H3z"/><path d="M14 7l7 5-7 5z"/></svg></div>
+          <div class="tool-body">
+            <div style="display:flex; justify-content:space-between;">
+              <div>
+                <div class="tool-title">Video Converter</div>
+                <div class="tool-desc">FFmpeg.wasm — load only when needed</div>
+              </div>
+            </div>
+
+            <div style="margin-top:10px; display:grid; grid-template-columns:1fr 160px; gap:12px;">
+              <div>
+                <label>Choose video</label>
+                <input id="videoInput" type="file" accept="video/*" />
+                <label style="margin-top:8px">Output format</label>
+                <select id="videoFormat" class="field" style="width:140px">
+                  <option value="mp4">MP4</option>
+                  <option value="webm">WEBM</option>
+                  <option value="mkv">MKV</option>
+                </select>
+                <div style="margin-top:8px;" class="tool-actions">
+                  <button class="btn" id="videoLoadBtn">Load FFmpeg & Convert</button>
+                  <button class="btn secondary" id="videoReset">Reset</button>
+                </div>
+                <div id="videoStatus" class="muted tiny" style="margin-top:8px"></div>
+              </div>
+              <div>
+                <label>Preview</label>
+                <div id="videoPreview" class="preview-area tiny">No video</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- QR Generator Card -->
+        <div class="tool-card" id="qr-generator" style="display:none">
+          <div class="tool-icon" aria-hidden><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="6" height="6"/><rect x="15" y="3" width="6" height="6"/><rect x="3" y="15" width="6" height="6"/></svg></div>
+          <div class="tool-body">
+            <div style="display:flex; justify-content:space-between;">
+              <div>
+                <div class="tool-title">QR Code Generator</div>
+                <div class="tool-desc">Generate QR from text / URL</div>
+              </div>
+            </div>
+
+            <div style="margin-top:10px;">
+              <label>Text or URL</label>
+              <input id="qrText" type="text" placeholder="https://example.com" />
+              <label style="margin-top:8px">Size (px)</label>
+              <input id="qrSize" type="number" min="120" max="2000" value="320" />
+              <div style="margin-top:8px;" class="tool-actions">
+                <button class="btn" id="qrGenBtn">Generate QR</button>
+                <button class="btn secondary" id="qrReset">Reset</button>
+              </div>
+              <div id="qrStatus" class="muted tiny" style="margin-top:8px"></div>
+
+              <div style="margin-top:8px">
+                <label>Preview</label>
+                <div id="qrPreview" class="preview-area tiny" style="padding:12px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Image Filter Card -->
+        <div class="tool-card" id="img-filter" style="display:none">
+          <div class="tool-icon" aria-hidden><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M22 7L13 2 2 7"/><path d="M2 17l11 5 11-5"/></svg></div>
+          <div class="tool-body">
+            <div style="display:flex; justify-content:space-between;">
+              <div>
+                <div class="tool-title">Image Filter</div>
+                <div class="tool-desc">Brightness / Contrast / Blur / Grayscale</div>
+              </div>
+            </div>
+
+            <div style="margin-top:10px; display:grid; grid-template-columns:1fr 160px; gap:12px;">
+              <div>
+                <label>Choose image</label>
+                <input id="filterInput" type="file" accept="image/*" />
+                <div style="margin-top:8px">
+                  <label>Brightness</label>
+                  <input id="fBrightness" type="range" min="0.2" max="2" step="0.05" value="1" />
+                  <label>Contrast</label>
+                  <input id="fContrast" type="range" min="0.2" max="2" step="0.05" value="1" />
+                  <label>Blur (px)</label>
+                  <input id="fBlur" type="range" min="0" max="10" step="0.5" value="0" />
+                  <label style="display:flex; gap:8px; align-items:center;"><input id="fGray" type="checkbox" /> Grayscale</label>
+                </div>
+                <div style="margin-top:8px" class="tool-actions">
+                  <button class="btn" id="applyFilterBtn">Apply & Download</button>
+                  <button class="btn secondary" id="filterReset">Reset</button>
+                </div>
+                <div id="filterStatus" class="muted tiny" style="margin-top:8px"></div>
+              </div>
+              <div>
+                <label>Preview</label>
+                <div id="filterPreview" class="preview-area tiny">No image</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT: Preview / tips -->
+      <aside class="panel">
+        <h4>Preview / Results</h4>
+        <div id="commonPreview" class="preview-area tiny">
+          <div style="text-align:center">
+            <div style="font-weight:700; color:var(--accent1)">Ready</div>
+            <div class="muted">Perform a tool action — results & downloads will appear here.</div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;">
+          <div class="muted tiny">Tips</div>
+          <ul style="padding-left:18px; margin:6px 0 0 0; line-height:1.6;">
+            <li>Use images with contrast for best BG remove results.</li>
+            <li>FFmpeg loads ~10–20 MB; use short videos when converting in-browser.</li>
+            <li>Cropper preserves high-res cropping — use download button after crop.</li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+
+    <footer>
+      <div class="muted">© Anidongh — Multi Box v2 · All client-side tools</div>
+    </footer>
+  </div>
+
+  <script>
+    /* ---------- Helpers ---------- */
+    function el(id){ return document.getElementById(id); }
+    function bytesToKB(n){ return Math.round(n/1024); }
+    function readFileAsDataURL(file){ return new Promise((res, rej)=>{
+      const r = new FileReader();
+      r.onload = ()=> res(r.result);
+      r.onerror = ()=> rej(new Error('read error'));
+      r.readAsDataURL(file);
+    });}
+
+    /* ---------- Navigation: show specific tool ---------- */
+    const toolIds = ['img-convert','img-crop','img-compress','bg-remove','video-convert','qr-generator','img-filter'];
+    function showTool(id){
+      toolIds.forEach(t=> {
+        const node = el(t);
+        if(node) node.style.display = (t === id) ? 'flex' : 'none';
+      });
+      // focus preview area
+      el('commonPreview').scrollTop = 0;
+    }
+    // default: show convert
+    showTool('img-convert');
+
+    /* ---------- Image Convert ---------- */
+    const convertInput = el('convertInput');
+    const convertFormat = el('convertFormat');
+    const convertQuality = el('convertQuality');
+    const convertBtn = el('convertBtn');
+    const convertStatus = el('convertStatus');
+    const convertPreview = el('convertPreview');
+
+    convertBtn.addEventListener('click', async ()=>{
+      if(!convertInput.files.length){ alert('Please upload an image'); return; }
+      const file = convertInput.files[0];
+      convertStatus.textContent = 'Processing...';
+      try{
+        const data = await readFileAsDataURL(file);
+        const img = new Image();
+        img.src = data;
+        await img.decode?.();
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img,0,0);
+        const fmt = (convertFormat.value === 'jpeg') ? 'jpeg' : convertFormat.value;
+        const q = parseFloat(convertQuality.value) || 0.92;
+        const out = canvas.toDataURL('image/' + fmt, q);
+        const kb = bytesToKB((out.length*3)/4);
+        convertPreview.innerHTML = `<img src="${out}" alt="converted"><div class="tiny muted">Size: ${kb} KB • ${fmt.toUpperCase()}</div>`;
+        const a = document.createElement('a');
+        a.href = out; a.download = file.name.split('.').slice(0,-1).join('.')+'_converted.' + (fmt==='jpeg'?'jpg':fmt);
+        a.className='download-link'; a.textContent='Download';
+        convertPreview.appendChild(a);
+        convertStatus.textContent = 'Done ✅';
+        // also show in common
+        el('commonPreview').innerHTML = convertPreview.innerHTML;
+      }catch(e){
+        console.error(e);
+        convertStatus.textContent = 'Error processing image';
+      }
+    });
+    el('convertReset').addEventListener('click', ()=>{
+      convertInput.value=''; convertPreview.innerHTML=''; convertStatus.textContent='';
+    });
+
+    /* ---------- Cropper ---------- */
+    let cropper = null;
+    const cropInput = el('cropInput'), cropImageEl = el('cropImage'), cropStatus = el('cropStatus'), cropPreviewBox = el('cropPreviewBox');
+    cropInput.addEventListener('change', async (e)=>{
+      const file = e.target.files[0]; if(!file) return;
+      cropStatus.textContent = 'Loading image...';
+      const data = await readFileAsDataURL(file);
+      cropImageEl.src = data;
+      if(cropper){ cropper.destroy(); cropper = null; }
+      cropImageEl.onload = ()=> {
+        cropper = new Cropper(cropImageEl, { aspectRatio: 4/3, viewMode:1, preview: '#cropPreviewBox' });
+        cropStatus.textContent = 'Ready to crop';
+      };
+    });
+    function setCropRatio(r){ if(!cropper){ alert('Load image first'); return; } cropper.setAspectRatio(Number.isFinite(r) ? r : NaN); }
+    el('cropDo').addEventListener('click', ()=>{
+      if(!cropper){ alert('Load image first'); return; }
+      const canvas = cropper.getCroppedCanvas({ imageSmoothingQuality:'high' });
+      if(!canvas){ cropStatus.textContent = 'Could not crop'; return; }
+      const data = canvas.toDataURL('image/png');
+      el('commonPreview').innerHTML = `<img src="${data}"><div class="tiny muted">Cropped PNG • ${bytesToKB((data.length*3)/4)} KB</div>`;
+      const a = document.createElement('a'); a.href=data; a.download='cropped.png'; a.className='download-link'; a.textContent='Download';
+      el('commonPreview').appendChild(a);
+      cropStatus.textContent = 'Cropped ✅';
+    });
+    el('cropReset').addEventListener('click', ()=>{
+      cropInput.value=''; cropImageEl.src=''; cropPreviewBox.innerHTML=''; cropStatus.textContent=''; if(cropper){ cropper.destroy(); cropper=null; }
+    });
+
+    /* ---------- Image Compressor ---------- */
+    const compressInput = el('compressInput'), compressBtn = el('compressBtn'), compressStatus = el('compressStatus'), compressPreview = el('compressPreview');
+    const compressMaxWidth = el('compressMaxWidth'), compressQuality = el('compressQuality');
+
+    compressBtn.addEventListener('click', async ()=>{
+      if(!compressInput.files.length){ alert('Please select image'); return; }
+      const file = compressInput.files[0]; compressStatus.textContent='Compressing...';
+      try{
+        const data = await readFileAsDataURL(file);
+        const img = new Image(); img.src = data; await img.decode?.();
+        let maxW = parseInt(compressMaxWidth.value) || img.naturalWidth;
+        const scale = img.naturalWidth > maxW ? maxW / img.naturalWidth : 1;
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.naturalWidth * scale);
+        canvas.height = Math.round(img.naturalHeight * scale);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img,0,0, canvas.width, canvas.height);
+        const q = parseFloat(compressQuality.value) || 0.85;
+        const preferPNG = file.type === 'image/png';
+        const outType = (preferPNG && q === 1) ? 'image/png' : 'image/jpeg';
+        const compressed = canvas.toDataURL(outType, q);
+        const kb = bytesToKB((compressed.length*3)/4);
+        compressPreview.innerHTML = `<img src="${compressed}"><div class="tiny muted">Result: ${kb} KB • ${canvas.width}×${canvas.height}</div>`;
+        const a = document.createElement('a'); a.href=compressed; a.download = (file.name.split('.').slice(0,-1).join('.')||'image') + '_compressed.' + (outType==='image/png'?'png':'jpg');
+        a.className='download-link'; a.textContent='Download';
+        compressPreview.appendChild(a);
+        compressStatus.textContent = 'Done ✅';
+        el('commonPreview').innerHTML = compressPreview.innerHTML;
+      }catch(e){
+        console.error(e);
+        compressStatus.textContent = 'Compression failed';
+      }
+    });
+    el('compressReset').addEventListener('click', ()=>{ compressInput.value=''; compressPreview.innerHTML=''; compressStatus.textContent=''; });
+
+    /* ---------- Background Remove ---------- */
+    const bgInput = el('bgInput'), bgBtn = el('bgBtn'), bgTolerance = el('bgTolerance'), bgPreview = el('bgPreview'), bgStatusEl = el('bgStatus');
+    bgBtn.addEventListener('click', async ()=>{
+      if(!bgInput.files.length){ alert('Choose image'); return; }
+      const file = bgInput.files[0]; bgStatusEl.textContent='Removing...';
+      try{
+        const data = await readFileAsDataURL(file);
+        const img = new Image(); img.src = data; await img.decode?.();
+        const canvas = document.createElement('canvas'); canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d'); ctx.drawImage(img,0,0);
+        const imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
+        const dataArr = imageData.data;
+        const pad = Math.max(3, Math.round(Math.min(canvas.width, canvas.height)*0.01));
+        function sampleAvg(x,y,w,h){
+          const sample=[0,0,0]; let count=0;
+          const sx=Math.max(0,x), sy=Math.max(0,y);
+          for(let i=sx;i<Math.min(canvas.width, x+w); i++){
+            for(let j=sy;j<Math.min(canvas.height, y+h); j++){
+              const idx=(j*canvas.width+i)*4;
+              sample[0]+=dataArr[idx]; sample[1]+=dataArr[idx+1]; sample[2]+=dataArr[idx+2];
+              count++;
+            }
+          }
+          return count ? [sample[0]/count, sample[1]/count, sample[2]/count] : [255,255,255];
+        }
+        const s1 = sampleAvg(0,0,pad,pad), s2 = sampleAvg(canvas.width-pad,0,pad,pad), s3 = sampleAvg(0,canvas.height-pad,pad,pad), s4 = sampleAvg(canvas.width-pad,canvas.height-pad,pad,pad);
+        const avgBG = [(s1[0]+s2[0]+s3[0]+s4[0])/4, (s1[1]+s2[1]+s3[1]+s4[1])/4, (s1[2]+s2[2]+s3[2]+s4[2])/4];
+        const tol = parseInt(bgTolerance.value) || 60;
+        function dist(r1,g1,b1,r2,g2,b2){ const dr=r1-r2, dg=g1-g2, db=b1-b2; return Math.sqrt(dr*dr + dg*dg + db*db); }
+        for(let i=0;i<dataArr.length;i+=4){
+          const r = dataArr[i], g = dataArr[i+1], b = dataArr[i+2];
+          const d = dist(r,g,b, avgBG[0], avgBG[1], avgBG[2]);
+          if(d <= tol) dataArr[i+3] = 0;
+        }
+        ctx.putImageData(imageData,0,0);
+        const out = canvas.toDataURL('image/png');
+        bgPreview.innerHTML = `<img src="${out}"><div class="tiny muted">PNG with transparency • ${bytesToKB((out.length*3)/4)} KB</div>`;
+        const a = document.createElement('a'); a.href=out; a.download=(file.name.split('.').slice(0,-1).join('.')||'image')+'_transparent.png'; a.className='download-link'; a.textContent='Download PNG';
+        bgPreview.appendChild(a);
+        bgStatusEl.textContent = 'Done ✅ (simple algorithm)';
+        el('commonPreview').innerHTML = bgPreview.innerHTML;
+      }catch(e){
+        console.error(e);
+        bgStatusEl.textContent = 'BG removal failed';
+      }
+    });
+    el('bgReset').addEventListener('click', ()=>{ bgInput.value=''; bgPreview.innerHTML=''; bgStatusEl.textContent=''; });
+
+    /* ---------- FFmpeg Video Convert (load on demand) ---------- */
+    const { createFFmpeg, fetchFile } = FFmpeg;
+    let ffmpeg=null, ffmpegLoading=false;
+    const videoLoadBtn = el('videoLoadBtn'), videoInput = el('videoInput'), videoFormat = el('videoFormat'), videoStatus = el('videoStatus'), videoPreviewDiv = el('videoPreview');
+
+    async function loadFFmpeg(){
+      if(ffmpeg) return ffmpeg;
+      ffmpegLoading = true;
+      videoStatus.innerHTML = 'Loading FFmpeg... <span class="loader">⏳</span>';
+      ffmpeg = createFFmpeg({ log:false });
+      try{
+        await ffmpeg.load();
+        ffmpegLoading = false;
+        videoStatus.textContent = 'FFmpeg loaded';
+        return ffmpeg;
+      }catch(e){
+        console.error(e);
+        ffmpeg=null; ffmpegLoading=false;
+        videoStatus.textContent = 'Failed to load FFmpeg';
+        throw e;
+      }
+    }
+
+    videoLoadBtn.addEventListener('click', async ()=>{
+      if(!videoInput.files.length){ alert('Choose a video'); return; }
+      const file = videoInput.files[0];
+      const outFmt = videoFormat.value;
+      try{
+        await loadFFmpeg();
+        videoStatus.textContent = 'Preparing file...';
+        const base = file.name.split('.').slice(0,-1).join('.') || 'video';
+        const inputName = 'input.' + (file.name.split('.').pop() || 'mp4');
+        const outputName = `${base}_converted.${outFmt}`;
+        const data = await fetchFile(file);
+        ffmpeg.FS('writeFile', inputName, data);
+        videoStatus.textContent = 'Converting... (this may take time)';
+        // simple transcode - copy codecs if possible, else convert container
+        await ffmpeg.run('-i', inputName, '-c', 'copy', outputName).catch(async ()=>{
+          // fallback: re-encode if copy fails
+          await ffmpeg.run('-i', inputName, outputName);
+        });
+        const outData = ffmpeg.FS('readFile', outputName);
+        const blob = new Blob([outData.buffer], { type: `video/${outFmt}` });
+        const url = URL.createObjectURL(blob);
+        videoPreviewDiv.innerHTML = `<video controls src="${url}" style="max-width:100%;"></video><div class="tiny muted">Format: ${outFmt.toUpperCase()}</div>`;
+        const a = document.createElement('a'); a.href=url; a.download=outputName; a.className='download-link'; a.textContent='Download Video';
+        videoPreviewDiv.appendChild(a);
+        videoStatus.textContent = 'Conversion finished ✅';
+        el('commonPreview').innerHTML = videoPreviewDiv.innerHTML;
+      }catch(e){
+        console.error(e);
+        videoStatus.textContent = 'Conversion failed';
+      }
+    });
+
+    el('videoReset').addEventListener('click', ()=>{ videoInput.value=''; videoPreviewDiv.innerHTML=''; videoStatus.textContent=''; });
+
+    /* ---------- QR Generator ---------- */
+    const qrGenBtn = el('qrGenBtn'), qrText = el('qrText'), qrSize = el('qrSize'), qrPreview = el('qrPreview'), qrStatus = el('qrStatus');
+    el('qrReset').addEventListener('click', ()=>{ qrText.value=''; qrSize.value=320; qrPreview.innerHTML=''; qrStatus.textContent=''; });
+    qrGenBtn.addEventListener('click', ()=>{
+      const t = qrText.value.trim(); const size = parseInt(qrSize.value) || 320;
+      if(!t){ alert('Enter text or URL'); return; }
+      qrPreview.innerHTML = '';
+      const holder = document.createElement('div');
+      holder.style.display='inline-block';
+      new QRCode(holder, { text: t, width: size, height: size, colorDark: "#081023", colorLight: "#fff0", correctLevel: QRCode.CorrectLevel.H });
+      qrPreview.appendChild(holder);
+      // convert canvas/svg to image for download if possible
+      setTimeout(()=>{
+        // if QRCode created as <img> or <canvas>
+        const img = holder.querySelector('img') || holder.querySelector('canvas');
+        if(img){
+          const a = document.createElement('a');
+          if(img.tagName.toLowerCase()==='img'){
+            a.href = img.src;
+          } else {
+            a.href = img.toDataURL('image/png');
+          }
+          a.download = 'qrcode.png';
+          a.className='download-link'; a.textContent='Download QR';
+          qrPreview.appendChild(a);
+        }
+      },150);
+      qrStatus.textContent = 'QR generated';
+      el('commonPreview').innerHTML = qrPreview.innerHTML;
+    });
+
+    /* ---------- Image Filter ---------- */
+    const filterInput = el('filterInput'), fBrightness = el('fBrightness'), fContrast = el('fContrast'), fBlur = el('fBlur'), fGray = el('fGray');
+    const applyFilterBtn = el('applyFilterBtn'), filterPreview = el('filterPreview'), filterStatus = el('filterStatus');
+    let filterImageDataUrl = null;
+    filterInput.addEventListener('change', async (e)=>{
+      const file = e.target.files[0]; if(!file) return;
+      filterStatus.textContent='Loading...';
+      const data = await readFileAsDataURL(file);
+      filterImageDataUrl = data;
+      filterPreview.innerHTML = `<img id="filterPreviewImg" src="${data}" alt="filter preview" style="max-width:100%"/>`;
+      filterStatus.textContent = 'Image ready';
+    });
+
+    function applyFiltersToCanvas(dataUrl){
+      return new Promise(async (res,rej)=>{
+        try{
+          const img = new Image(); img.src = dataUrl; await img.decode?.();
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+          const ctx = canvas.getContext('2d');
+          // draw original
+          ctx.drawImage(img,0,0);
+          // apply CSS-like filters by temporary canvas manipulation: easiest approach - use CSS filters on an offscreen element and draw it
+          const off = document.createElement('canvas'); off.width=canvas.width; off.height=canvas.height;
+          const offCtx = off.getContext('2d');
+          // create an <img> element with filter and draw via drawImage
+          const tempImg = new Image();
+          const brightness = parseFloat(fBrightness.value) || 1;
+          const contrast = parseFloat(fContrast.value) || 1;
+          const blur = parseFloat(fBlur.value) || 0;
+          const gray = fGray.checked ? 'grayscale(1) ' : '';
+          // Using CSS filter on a DOM image then drawing to canvas
+          tempImg.style.filter = `${gray}brightness(${brightness}) contrast(${contrast}) blur(${blur}px)`;
+          tempImg.src = dataUrl;
+          tempImg.onload = ()=>{
+            try{
+              // draw filtered image onto offscreen canvas
+              offCtx.filter = `${gray}brightness(${brightness}) contrast(${contrast}) blur(${blur}px)`;
+              // NOTE: not all browsers fully support filter on canvas; fallback to drawing original if not supported
+              offCtx.drawImage(tempImg,0,0, off.width, off.height);
+              // if grayscale requested and not applied, do manual convert:
+              if(fGray.checked){
+                const id = offCtx.getImageData(0,0,off.width,off.height);
+                const d = id.data;
+                for(let i=0;i<d.length;i+=4){
+                  const r = d[i], g = d[i+1], b = d[i+2];
+                  const v = 0.299*r + 0.587*g + 0.114*b;
+                  d[i]=d[i+1]=d[i+2]=v;
+                }
+                offCtx.putImageData(id,0,0);
+              }
+              // return dataURL
+              const out = off.toDataURL('image/png');
+              res(out);
+            }catch(err){
+              // fallback: draw original and return
+              console.error(err); res(dataUrl);
+            }
+          };
+          tempImg.onerror = ()=> res(dataUrl);
+        }catch(e){ rej(e); }
+      });
+    }
+
+    applyFilterBtn.addEventListener('click', async ()=>{
+      if(!filterImageDataUrl){ alert('Choose an image first'); return; }
+      filterStatus.textContent = 'Applying filters...';
+      try{
+        const out = await applyFiltersToCanvas(filterImageDataUrl);
+        filterPreview.innerHTML = `<img src="${out}" alt="filtered" style="max-width:100%"/>`;
+        const a = document.createElement('a'); a.href=out; a.download='filtered.png'; a.className='download-link'; a.textContent='Download Filtered';
+        filterPreview.appendChild(a);
+        filterStatus.textContent = 'Done ✅';
+        el('commonPreview').innerHTML = filterPreview.innerHTML;
+      }catch(e){
+        console.error(e);
+        filterStatus.textContent = 'Filter apply failed';
+      }
+    });
+    el('filterReset').addEventListener('click', ()=>{ filterInput.value=''; filterPreview.innerHTML=''; filterStatus.textContent=''; filterImageDataUrl=null; fBrightness.value=1; fContrast.value=1; fBlur.value=0; fGray.checked=false; });
+
+    /* ---------- Small UI helpers ---------- */
+    document.getElementById('helpBtn').addEventListener('click', ()=> {
+      alert('Multi Box v2 — Tools are client-side. Use small videos for FFmpeg. For best BG removal, use images with clear background contrast.');
+    });
+
+    /* ---------- End ---------- */
+  </script>
+</body>
+</html>
